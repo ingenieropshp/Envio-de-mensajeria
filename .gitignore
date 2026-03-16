@@ -1,0 +1,9 @@
+# Ignorar archivos de datos sensibles
+datos/clientes.db
+datos/contactos.xlsx
+adjuntos/*
+reportes/*
+
+# Ignorar carpetas de Python
+__pycache__/
+*.pyc
