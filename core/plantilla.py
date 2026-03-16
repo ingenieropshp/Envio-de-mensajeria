@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
-from estilos import ESTILOS_CSS
+from core.estilos import ESTILOS_CSS
 
-def generar_html(nombre_cliente):
+def generar_html(nombre_cliente, mensaje_cuerpo):
+    # Convertimos los saltos de línea del área de texto de Streamlit (\n)
+    # a etiquetas de salto de línea HTML (<br>) para que mantenga el formato.
+    mensaje_html = mensaje_cuerpo.replace("\n", "<br>")
+    
     html = f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -15,9 +19,8 @@ def generar_html(nombre_cliente):
                 <h1>¡Hola, {nombre_cliente}!</h1>
             </div>
             <div class="content">
-                <p>Esperamos que estés teniendo un excelente día.</p>
-                <p>Te enviamos este correo para compartirte la documentación adjunta que solicitaste. Nuestro sistema ha procesado tu solicitud de manera automática para brindarte un mejor servicio.</p>
-                <p><strong>Por favor, revisa el archivo adjunto a este mensaje.</strong></p>
+                <p>{mensaje_html}</p>
+                
                 <center>
                     <a href="https://tuempresa.com" class="button">Visitar nuestro sitio</a>
                 </center>

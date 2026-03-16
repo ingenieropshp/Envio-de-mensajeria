@@ -6,83 +6,107 @@ import pandas as pd
 import mimetypes
 import os
 from email.message import EmailMessage
-from plantilla import generar_html
+from core.plantilla import generar_html
 
-def ejecutar_envio():
+def ejecutar_envio(progreso_callback=None, mensaje_personalizado="", asunto_personalizado=""):
     # --- CONFIGURACION ---
     USER = "nuevasaccionesturbo@gmail.com"
-    PASS = "rrrkunlulkvvgxcq" # Tu contraseña de 16 letras
+    PASS = "rrrkunlulkvvgxcq" 
     
-    # Rutas relativas (mirando hacia afuera de la carpeta 'core')
-    DB_PATH = '../datos/clientes.db'
-    ADJUNTOS_FOLDER = '../adjuntos/'
-    REPORTES_FOLDER = '../reportes/'
+    # Rutas para ejecución desde la raíz (donde vive app_web.py)
+    DB_PATH = 'datos/clientes.db'
+    ADJUNTOS_FOLDER = 'adjuntos/'
+    REPORTES_FOLDER = 'reportes/'
 
     resultados = []
 
     try:
-        # Conectar a la base de datos en la carpeta 'datos'
+        # 1. Conexión a Base de Datos
+        if not os.path.exists(DB_PATH):
+            print("❌ La base de datos no existe.")
+            return
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT nombre, email, archivo FROM contactos")
         destinatarios = cursor.fetchall()
 
         if not destinatarios:
-            print("⚠️ No hay contactos en la base de datos.")
+            print("⚠️ No hay contactos para enviar.")
             return
 
-        print(f"📧 Preparando envío para {len(destinatarios)} contactos...")
+        total = len(destinatarios)
 
+        # 2. Inicio de Servidor SMTP
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(USER, PASS)
             print("🚀 Conexión exitosa. Iniciando ráfaga personalizada...")
 
-            for nombre, email, nombre_archivo in destinatarios:
+            for i, (nombre, email, nombre_archivo) in enumerate(destinatarios):
                 try:
+                    # --- MAGIA DE PERSONALIZACIÓN ---
+                    # Personalizamos el ASUNTO
+                    asunto_final = asunto_personalizado.replace("{nombre}", nombre).replace("{archivo}", nombre_archivo)
+                    
+                    # Personalizamos el CUERPO del mensaje
+                    mensaje_final = mensaje_personalizado.replace("{nombre}", nombre).replace("{archivo}", nombre_archivo)
+                    
                     msg = EmailMessage()
-                    msg['Subject'] = f"Documento importante para {nombre}"
+                    msg['Subject'] = asunto_final # <--- ASUNTO DINÁMICO
                     msg['From'] = USER
                     msg['To'] = email
                     
-                    contenido = generar_html(nombre)
-                    msg.add_alternative(contenido, subtype='html')
+                    # Generamos el HTML con el mensaje ya personalizado
+                    contenido_html = generar_html(nombre, mensaje_final)
+                    msg.add_alternative(contenido_html, subtype='html')
 
-                    # --- LÓGICA DE ADJUNTO EN CARPETA ---
+                    # --- GESTIÓN DE ADJUNTO ---
                     ruta_archivo = os.path.join(ADJUNTOS_FOLDER, nombre_archivo)
                     
                     if os.path.exists(ruta_archivo):
                         with open(ruta_archivo, 'rb') as f:
                             file_data = f.read()
                             tipo, _ = mimetypes.guess_type(ruta_archivo)
+                            tipo = tipo if tipo else 'application/octet-stream'
                             maintype, subtype = tipo.split('/')
                             msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=nombre_archivo)
                         
                         smtp.send_message(msg)
-                        print(f"✅ Enviado: {nombre} ({nombre_archivo})")
                         estado = "Enviado con éxito"
+                        print(f"✅ {i+1}/{total} Enviado: {nombre} | Asunto: {asunto_final}")
                     else:
-                        print(f"⚠️ Archivo no encontrado: {nombre_archivo}")
-                        estado = "Error: Archivo faltante"
+                        estado = "Error: Archivo no encontrado"
+                        print(f"⚠️ Archivo faltante: {nombre_archivo}")
 
                     resultados.append({"Nombre": nombre, "Email": email, "Archivo": nombre_archivo, "Estado": estado})
-                    time.sleep(2)
+                    
+                    # --- ACTUALIZAR INTERFAZ WEB ---
+                    if progreso_callback:
+                        progreso_callback(i + 1, total)
+
+                    time.sleep(1.5) # Pausa estratégica anti-spam
 
                 except Exception as e:
-                    print(f"❌ Falló {email}: {e}")
+                    print(f"❌ Error enviando a {email}: {e}")
                     resultados.append({"Nombre": nombre, "Email": email, "Archivo": nombre_archivo, "Estado": f"Error: {e}"})
 
     except Exception as e:
-        print(f"💥 Error crítico: {e}")
+        print(f"💥 Error crítico en el motor: {e}")
     finally:
-        # --- GUARDAR REPORTE EN CARPETA 'REPORTES' ---
+        # --- GENERACIÓN DE REPORTE FINAL ---
         if resultados:
             if not os.path.exists(REPORTES_FOLDER): os.makedirs(REPORTES_FOLDER)
             df_reporte = pd.DataFrame(resultados)
-            nombre_reporte = f"{REPORTES_FOLDER}reporte_{time.strftime('%Y%m%d_%H%M%S')}.xlsx"
+            timestamp = time.strftime('%Y%m%d_%H%M%S')
+            nombre_reporte = f"{REPORTES_FOLDER}reporte_{timestamp}.xlsx"
             df_reporte.to_excel(nombre_reporte, index=False)
-            print(f"\n📊 Reporte guardado en: {nombre_reporte}")
+            print(f"📊 Proceso terminado. Reporte generado en carpeta 'reportes'.")
         
         if 'conn' in locals(): conn.close()
 
 if __name__ == "__main__":
-    ejecutar_envio()
+    # Prueba rápida
+    ejecutar_envio(
+        asunto_personalizado="Prueba para {nombre}", 
+        mensaje_personalizado="Hola {nombre}, este es el archivo {archivo}"
+    )

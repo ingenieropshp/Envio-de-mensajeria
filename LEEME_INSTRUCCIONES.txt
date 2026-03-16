@@ -1,0 +1,24 @@
+=========================================
+🚀 MANUAL DE TURBO MAILER PRO
+=========================================
+
+Si el programa deja de funcionar o lo instalas en una PC nueva:
+
+1. INSTALACIÓN (Solo la primera vez):
+   - Ejecuta el archivo '1_INSTALAR_LIBRERIAS.bat'.
+   - Esto instalará Streamlit, Pandas y Openpyxl.
+
+2. CÓMO ARRANCAR EL PROGRAMA:
+   - Ejecuta el archivo '2_ABRIR_TURBO_MAILER.bat'.
+   - Automáticamente se abrirá tu navegador con la interfaz.
+
+3. USO DE LA APP:
+   - Sube tu Excel en el recuadro 1.
+   - Sube tus PDFs en el recuadro 2.
+   - Escribe el Asunto y el Mensaje usando {nombre} y {archivo}.
+   - ¡Dale a fuego! 🔥
+
+4. NOTA DE SEGURIDAD:
+   - Si cambias tu contraseña de Gmail, recuerda actualizarla 
+     en 'core/main.py'.
+=========================================
